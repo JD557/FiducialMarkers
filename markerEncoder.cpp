@@ -49,27 +49,40 @@ std::string dec2bin(unsigned n){
 
 void create_image(std::string filename, std::string id){
 	   bitmap_image image(CELL_WIDTH*WIDTH,CELL_HEIGHT*HEIGHT);
+
+	   //white out the image
 	   image.set_all_channels(NO_COLOR[0],NO_COLOR[1],NO_COLOR[2]);
+
+	   //choose color for each cell
 	   unsigned int *color;
+	   int id_pos = id.size()-1;
 	   for(unsigned int i=0; i<TOTAL_CELLS; ++i){
 		   switch(i){
 		   	   case TOP_LEFT_CORNER:
-		   		 color=TOP_LEFT_COLOR;
+		   		 color = TOP_LEFT_COLOR;
 		   		 break;
 		   	   case TOP_RIGHT_CORNER:
-		   		 color=TOP_RIGHT_COLOR;
+		   		 color = TOP_RIGHT_COLOR;
 				 break;
 		   	   case BOTTOM_LEFT_CORNER:
-		   		 color=BOTTOM_LEFT_COLOR;
+		   		 color = BOTTOM_LEFT_COLOR;
 				 break;
 		   	   case BOTTOM_RIGHT_CORNER:
-		   		 color=BOTTOM_RIGHT_COLOR;
+		   		 color = BOTTOM_RIGHT_COLOR;
 				 break;
 		   	   default:
-		   		color=  (i<id.size() && id[i]=='1') ? YES_COLOR : NO_COLOR;
+		   		if(id_pos>=0){
+		   			color = id[id_pos--]=='1' ? YES_COLOR : NO_COLOR;
+		   		} else {
+		   			color=NO_COLOR;
+		   		}
 		   		break;
 		   }
-		   image.set_region(i%5*CELL_WIDTH,i/5*CELL_HEIGHT,CELL_WIDTH,CELL_HEIGHT,color[0],color[1],color[2]);
+		   //print in reverse
+		   unsigned int x = (WIDTH-1-i%5)*CELL_WIDTH;
+		   unsigned int y = (HEIGHT-1-i/5)*CELL_HEIGHT;
+		   image.set_region(x,y,CELL_WIDTH,CELL_HEIGHT,color[0],color[1],color[2]);
+
 	   }
 	   image.save_image(filename);
 }
@@ -81,7 +94,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	std::string id          = dec2bin(atoi(argv[1]));
+	std::string id = dec2bin(atoi(argv[1]));
 	std::string output_file = "output.bmp";
 
 	if(argc > 2){
@@ -90,6 +103,6 @@ int main(int argc, char **argv)
 
 	create_image(output_file,id);
 
-	std::cout << id[0] << " " << output_file;
+	std::cout << id[0] << ":" << id << " output:"<< output_file;
 	return 0;
 }
