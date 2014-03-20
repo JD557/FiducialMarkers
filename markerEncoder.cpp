@@ -48,7 +48,7 @@ std::string dec2bin(unsigned n){
 }
 
 void create_image(std::string filename, std::string id){
-	   bitmap_image image(CELL_WIDTH*5,CELL_HEIGHT*5);
+	   bitmap_image image(CELL_WIDTH*WIDTH,CELL_HEIGHT*HEIGHT);
 	   image.set_all_channels(NO_COLOR[0],NO_COLOR[1],NO_COLOR[2]);
 	   unsigned int *color;
 	   for(unsigned int i=0; i<TOTAL_CELLS; ++i){

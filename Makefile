@@ -19,4 +19,4 @@ encoder.o:markerEncoder.cpp
 	$(CC) $(CFLAGS) markerEncoder.cpp
 
 clean: 
-	rm -f o.* encoder decoder
+	rm -f *.o encoder decoder
