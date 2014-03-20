@@ -71,10 +71,10 @@ void create_image(std::string filename, std::string id){
 		   		 color = BOTTOM_RIGHT_COLOR;
 				 break;
 		   	   default:
-		   		if(id_pos>=0){
-		   			color = id[id_pos--]=='1' ? YES_COLOR : NO_COLOR;
+		   		if(id_pos>=0 && id[id_pos--]=='1'){
+		   			color = YES_COLOR;
 		   		} else {
-		   			color=NO_COLOR;
+		   			continue;
 		   		}
 		   		break;
 		   }
