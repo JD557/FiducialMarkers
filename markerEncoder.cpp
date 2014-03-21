@@ -80,8 +80,8 @@ void create_image(std::string filename, std::string id){
 		   		break;
 		   }
 		   //print in reverse
-		   unsigned int x = (WIDTH-1-i%5)*CELL_WIDTH;
-		   unsigned int y = (HEIGHT-1-i/5)*CELL_HEIGHT;
+		   unsigned int x = (WIDTH-1-i%WIDTH)*CELL_WIDTH;
+		   unsigned int y = (HEIGHT-1-i/HEIGHT)*CELL_HEIGHT;
 		   image.set_region(x,y,CELL_WIDTH,CELL_HEIGHT,color[0],color[1],color[2]);
 
 	   }
