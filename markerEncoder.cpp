@@ -1,8 +1,10 @@
 #include <iostream>
-#include <stdlib.h>
+#include <cstdlib>
+#include <vector>
+#include <bitset>
 #include "bitmap_image.hpp"
 
-//NUMBER OF CELLS
+//NUMBER OF CELLS (redundancy bits only implemented for 5x5 matrix)
 const unsigned int WIDTH       = 5;
 const unsigned int HEIGHT      = 5;
 const unsigned int TOTAL_CELLS = WIDTH*HEIGHT;
@@ -27,61 +29,118 @@ unsigned int BOTTOM_RIGHT_COLOR[] = {255,0,0};     //RED
 
 const std::string DEFAULT_FILE_NAME = "output.bmp";
 
+const int hamming_matrix[5][16] = {
+	0,0,1,1,1,
+	0,1,0,1,1,
+	0,1,1,0,1,
+	0,1,1,1,0,
+	1,0,0,1,1,
+	1,0,1,0,1,
+	1,0,1,1,0,
+	1,1,0,0,1,
+	1,1,0,1,0,
+	1,1,1,0,0,
+	1,1,1,1,1,
+	1,1,1,1,0,
+	1,1,1,0,1,
+	1,1,0,1,1,
+	1,1,0,0,0,
+	1,0,1,1,1
+};
+
+/*
+const int hamming_matrix[] = {
+	1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,
+	0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,
+	0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,
+	0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,
+	0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,
+	0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,
+	0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,1,0,
+	0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,1,0,0,1,
+	0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,1,0,1,0,
+	0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,0,0,
+	0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,
+	0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,1,1,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,1,0,1,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,0,1,1,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,1
+};
+
+const int check_matrix[] = {
+	1,1,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,0,0,1,
+	1,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,0,0,0,1,0,
+	1,0,1,1,0,1,1,0,0,1,1,1,1,0,0,1,0,0,1,0,0,
+	0,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,1,0,0,0,
+	0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0
+};
+*/
+
 void readme(){
 	std::cout << "USAGE: encoder: <id> [output]";
 }
 
-std::string dec2bin(unsigned n){
-    const int size=sizeof(n)*8;
-    std::string res;
-    bool s=0;
-    for (int a=0;a<size;a++){
-        bool bit=n>>(size-1);
-        if (bit)
-            s=1;
-        if (s)
-            res.push_back(bit+'0');
-        n<<=1;
-    }
-    if (!res.size())
-        res.push_back('0');
-    return res;
+std::bitset<21> dec2bin(unsigned n){
+	// convert to binary
+	std::bitset<21> bin(n);
+
+	// blank out the 5 most significant
+	// to use for redundancy bits
+	// if number was over 2^16
+	for(unsigned int i=16; i<21; ++i)
+		bin[i] = 0;
+
+	return bin;
 }
 
-void create_image(std::string filename, std::string id){
+std::bitset<21> add_redundancy(std::bitset<21> id){
+	unsigned int shift = 16;
+	for(unsigned int i=0; i<5; ++i){
+		for(unsigned int j=0; j<shift; ++j)
+			id[i+shift] = id[i+shift]^(id[j]&hamming_matrix[i][j]);
+	}
+	return id;
+}
+
+void create_image(std::string &filename, std::bitset<21> id){
 	   bitmap_image image(CELL_WIDTH*WIDTH,CELL_HEIGHT*HEIGHT);
 
-	   //white out the image
+	   // white out the image
 	   image.set_all_channels(NO_COLOR[0],NO_COLOR[1],NO_COLOR[2]);
 
-	   //choose color for each cell
+	   // choose color for each cell
 	   unsigned int *color;
-	   int id_pos = id.size()-1;
-	   for(unsigned int i=0; i<TOTAL_CELLS; ++i){
+
+	   for(unsigned int i=0, id_pos=0; i<TOTAL_CELLS; ++i){
 		   switch(i){
 		   	   case TOP_LEFT_CORNER:
 		   		 color = TOP_LEFT_COLOR;
 		   		 break;
+
 		   	   case TOP_RIGHT_CORNER:
 		   		 color = TOP_RIGHT_COLOR;
 				 break;
+
 		   	   case BOTTOM_LEFT_CORNER:
 		   		 color = BOTTOM_LEFT_COLOR;
 				 break;
+
 		   	   case BOTTOM_RIGHT_CORNER:
 		   		 color = BOTTOM_RIGHT_COLOR;
 				 break;
-		   	   default:
-		   		//check if we finished printing
-		   		//if not, paint the next bit
-		   		if(id_pos>=0 && id[id_pos--]=='1')
-		   			color = YES_COLOR;
-		   		 else
-		   			continue;
 
+		   	   default:
+		   		// check if we finished printing
+		   		// if not, paint the next bit
+		   		if(id_pos>=0 && id[id_pos++]){
+		   			color = YES_COLOR;
+		   		} else {
+		   			continue;
+		   		}
 		   		break;
 		   }
-		   //print in reverse
+		   // print in reverse
 		   unsigned int x = (WIDTH-1-i%WIDTH)*CELL_WIDTH;
 		   unsigned int y = (HEIGHT-1-i/WIDTH)*CELL_HEIGHT;
 		   image.set_region(x,y,CELL_WIDTH,CELL_HEIGHT,color[0],color[1],color[2]);
@@ -97,11 +156,18 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	std::string id = dec2bin(atoi(argv[1]));
+	unsigned int id_decimal = atoi(argv[1]);
+
+	// |__redundancy__|_______________________id____________________________|
+	// [P5,P4,P3,P2,P1,B15,B14,B13,B12,B11,B10,B9,B8,B7,B6,B5,B4,B3,B2,B1,B0]
+	std::bitset<21> id = add_redundancy(dec2bin(id_decimal));
+
+	//use name from user or default for the output image
 	std::string output_file = argc > 2 ? argv[2] : DEFAULT_FILE_NAME;
 
+	//create representation
 	create_image(output_file,id);
 
-	std::cout << id[0] << ":" << id << " output:"<< output_file;
+	std::cout << argv[1] << ":" << id << " output:"<< output_file;
 	return 0;
 }
