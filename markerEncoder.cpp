@@ -3,8 +3,8 @@
 #include "bitmap_image.hpp"
 
 //NUMBER OF CELLS
-const unsigned int WIDTH = 5;
-const unsigned int HEIGHT = 5;
+const unsigned int WIDTH       = 5;
+const unsigned int HEIGHT      = 5;
 const unsigned int TOTAL_CELLS = WIDTH*HEIGHT;
 
 //CELL SIZE IN PIXELS
@@ -12,18 +12,18 @@ const unsigned int CELL_WIDTH  = 30;
 const unsigned int CELL_HEIGHT = 30;
 
 //CORNER POSITIONS
-const unsigned int TOP_LEFT_CORNER = 0;
-const unsigned int TOP_RIGHT_CORNER = WIDTH-1;
-const unsigned int BOTTOM_LEFT_CORNER = WIDTH*HEIGHT-WIDTH;
-const unsigned int BOTTOM_RIGHT_CORNER = WIDTH*HEIGHT-1;
+const unsigned int TOP_LEFT_CORNER     = 0;
+const unsigned int TOP_RIGHT_CORNER    = WIDTH-1;
+const unsigned int BOTTOM_LEFT_CORNER  = TOTAL_CELLS-WIDTH;
+const unsigned int BOTTOM_RIGHT_CORNER = TOTAL_CELLS-1;
 
 //RGB COLORS
-unsigned int YES_COLOR[]          = {0,0,0}; //BLACK
+unsigned int YES_COLOR[]          = {0,0,0};       //BLACK
 unsigned int NO_COLOR[]           = {255,255,255}; //WHITE
-unsigned int TOP_LEFT_COLOR[]     = {0,255,0}; //GREEN
-unsigned int TOP_RIGHT_COLOR[]    = {0,0,255}; //BLUE
-unsigned int BOTTOM_LEFT_COLOR[]  = {0,0,255}; //BLUE
-unsigned int BOTTOM_RIGHT_COLOR[] = {255,0,0}; //RED
+unsigned int TOP_LEFT_COLOR[]     = {0,255,0};     //GREEN
+unsigned int TOP_RIGHT_COLOR[]    = {0,0,255};     //BLUE
+unsigned int BOTTOM_LEFT_COLOR[]  = {0,0,255};     //BLUE
+unsigned int BOTTOM_RIGHT_COLOR[] = {255,0,0};     //RED
 
 const std::string DEFAULT_FILE_NAME = "output.bmp";
 
@@ -72,16 +72,18 @@ void create_image(std::string filename, std::string id){
 		   		 color = BOTTOM_RIGHT_COLOR;
 				 break;
 		   	   default:
-		   		if(id_pos>=0 && id[id_pos--]=='1'){
+		   		//check if we finished printing
+		   		//if not, paint the next bit
+		   		if(id_pos>=0 && id[id_pos--]=='1')
 		   			color = YES_COLOR;
-		   		} else {
+		   		 else
 		   			continue;
-		   		}
+
 		   		break;
 		   }
 		   //print in reverse
 		   unsigned int x = (WIDTH-1-i%WIDTH)*CELL_WIDTH;
-		   unsigned int y = (HEIGHT-1-i/HEIGHT)*CELL_HEIGHT;
+		   unsigned int y = (HEIGHT-1-i/WIDTH)*CELL_HEIGHT;
 		   image.set_region(x,y,CELL_WIDTH,CELL_HEIGHT,color[0],color[1],color[2]);
 
 	   }
@@ -96,11 +98,7 @@ int main(int argc, char **argv)
 	}
 
 	std::string id = dec2bin(atoi(argv[1]));
-	std::string output_file = DEFAULT_FILE_NAME;
-
-	if(argc > 2){
-		output_file = argv[2];
-	}
+	std::string output_file = argc > 2 ? argv[2] : DEFAULT_FILE_NAME;
 
 	create_image(output_file,id);
 
