@@ -25,6 +25,7 @@ unsigned int TOP_RIGHT_COLOR[]    = {0,0,255}; //BLUE
 unsigned int BOTTOM_LEFT_COLOR[]  = {0,0,255}; //BLUE
 unsigned int BOTTOM_RIGHT_COLOR[] = {255,0,0}; //RED
 
+const std::string DEFAULT_FILE_NAME = "output.bmp";
 
 void readme(){
 	std::cout << "USAGE: encoder: <id> [output]";
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
 	}
 
 	std::string id = dec2bin(atoi(argv[1]));
-	std::string output_file = "output.bmp";
+	std::string output_file = DEFAULT_FILE_NAME;
 
 	if(argc > 2){
 		output_file = argv[2];
