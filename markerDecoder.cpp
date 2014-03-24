@@ -2,44 +2,46 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/contrib/contrib.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <iostream>
 #include <vector>
 #include <sstream>
 using namespace std;
 using namespace cv;
 
+Mat frame;
+Mat imageSmooth;
+Mat imageHsv;
+Mat redImage;
+Mat greenImage;
+Mat blueImage;
+Mat imageThr1;
+Mat imageThr2;
+Mat logo;
+
 // Filtra a imageSmooth
-Mat improveImage(Mat image) {
-	Mat newImage;
-	medianBlur(image,newImage,5);
-	return newImage;
+void improveImage(Mat& image) {
+	medianBlur(image,imageSmooth,5);
 }
 
 // Extrai pontos vermelhos
-Mat extractRed(Mat imageHsv) {
-	Mat imageThr1;
-	Mat imageThr2;
+void extractRed(Mat& imageHsv) {
 	inRange(imageHsv,Scalar(165,180,50),Scalar(180,255,255),imageThr1);
 	inRange(imageHsv,Scalar(0,180,50),Scalar(15,255,255),imageThr2);
-	bitwise_or(imageThr1,imageThr2,imageThr1);
-	//morphologyEx(imageThr1,imageThr1,MORPH_CLOSE,Mat());
-	return imageThr1;
+	bitwise_or(imageThr1,imageThr2,redImage);
+	morphologyEx(redImage,redImage,MORPH_CLOSE,Mat());
 }
 
 // Extrai pontos verdes
-Mat extractGreen(Mat imageHsv) {
-	Mat imageThr;
-	inRange(imageHsv,Scalar(45,100,50),Scalar(75,255,255),imageThr);
-	//morphologyEx(imageThr,imageThr,MORPH_CLOSE,Mat());
-	return imageThr;
+void extractGreen(Mat& imageHsv) {
+	inRange(imageHsv,Scalar(45,100,50),Scalar(75,255,255),greenImage);
+	morphologyEx(greenImage,greenImage,MORPH_CLOSE,Mat());
 }
 
 // Extrai pontos azuis
-Mat extractBlue(Mat imageHsv) {
-	Mat imageThr;
-	inRange(imageHsv,Scalar(105,120,50),Scalar(135,255,255),imageThr);
-	//morphologyEx(imageThr,imageThr,MORPH_CLOSE,Mat());
-	return imageThr;
+void extractBlue(Mat& imageHsv) {
+	inRange(imageHsv,Scalar(105,120,50),Scalar(135,255,255),blueImage);
+	morphologyEx(blueImage,blueImage,MORPH_CLOSE,Mat());
 }
 
 int distance(Point pt1,Point pt2) {
@@ -48,6 +50,8 @@ int distance(Point pt1,Point pt2) {
 
 int main(int argc, char* argv[]) 
 { 
+
+	logo = imread("logo.png");
 	// Blob detector TODO falta afinar os parametros disto
 	SimpleBlobDetector::Params pointDetectorParams;
 	pointDetectorParams.filterByColor = false;
@@ -70,18 +74,16 @@ int main(int argc, char* argv[])
 	VideoCapture cap(0);
 	namedWindow("Camera",CV_WINDOW_AUTOSIZE);
 	if(!cap.isOpened()) {return -1;}
-	Mat frame;
 	while (true) {
 		if (cap.read(frame)) {
 			// Melhora a imagem
-			Mat imageSmooth = improveImage(frame);	
-			Mat imageHsv;
+			improveImage(frame);
 			cvtColor(imageSmooth,imageHsv,CV_BGR2HSV);
 
 			// Extrai pontos verdes e vermelhos
-			Mat redImage = extractRed(imageHsv);
-			Mat greenImage = extractGreen(imageHsv);
-			Mat blueImage = extractBlue(imageHsv);
+			extractRed(imageHsv);
+			extractGreen(imageHsv);
+			extractBlue(imageHsv);
 			vector<KeyPoint> redKeypoints;
 			vector<KeyPoint> greenKeypoints;
 			vector<KeyPoint> blueKeypoints;
@@ -89,15 +91,20 @@ int main(int argc, char* argv[])
 			pointDetector.detect(greenImage,greenKeypoints);
 			pointDetector.detect(blueImage,blueKeypoints);
 
+			Point pt1;
+			Point pt2;
+			Point pt3;
+			Point pt4;
+
 			// Desenha linhas
 			for (int i=0;i<redKeypoints.size();++i) {
+				KeyPoint redKP = redKeypoints[i]; 
+				pt1 = redKP.pt;
 				circle(imageSmooth,redKeypoints[i].pt,10,Scalar(0,0,255),2);
 				for (int j=0;j<greenKeypoints.size();++j) {
-					circle(imageSmooth,greenKeypoints[j].pt,10,Scalar(0,255,0),2);
-					Point pt1    = redKeypoints[i].pt;
-					Point pt2;
-					Point pt3    = greenKeypoints[j].pt;
-					Point pt4;
+					KeyPoint greenKP = greenKeypoints[j]; 
+					pt3 = greenKP.pt;
+					circle(imageSmooth,pt3,10,Scalar(0,255,0),2);
 					Point center = Point2i((pt1.x+pt3.x)/2,(pt1.y+pt3.y)/2);
 					//circle(imageSmooth,center,10,Scalar(255,0,0),2);
 					int vectX=pt3.x-pt1.x;
@@ -111,9 +118,10 @@ int main(int argc, char* argv[])
 					unsigned int distPt4 = -1;int bestPt4=-1;
 
 					for (int k=0;k<blueKeypoints.size();++k) {
-						circle(imageSmooth,blueKeypoints[k].pt,10,Scalar(255,0,0),2);
-						int newDistPt2 = distance(pt2,blueKeypoints[k].pt);
-						int newDistPt4 = distance(pt4,blueKeypoints[k].pt);
+						KeyPoint blueKP = blueKeypoints[k]; 
+						circle(imageSmooth,blueKP.pt,10,Scalar(255,0,0),2);
+						int newDistPt2 = distance(pt2,blueKP.pt);
+						int newDistPt4 = distance(pt4,blueKP.pt);
 						if (newDistPt2<distPt2) {
 							bestPt2 = k;
 							distPt2 = newDistPt2;
@@ -124,13 +132,34 @@ int main(int argc, char* argv[])
 						}
 					}
 
-					if (bestPt2>=0) {pt2 = blueKeypoints[bestPt2].pt;}
-					if (bestPt4>=0) {pt4 = blueKeypoints[bestPt4].pt;}
+					if (bestPt2>=0) {
+						KeyPoint bestKP2 = blueKeypoints[bestPt2];
+						pt2 = bestKP2.pt;
+					}
+					if (bestPt4>=0) {
+						KeyPoint bestKP4 = blueKeypoints[bestPt4];
+						pt4 = bestKP4.pt;
+					}
 
 					line(imageSmooth,pt1,pt2,Scalar(255,0,0),2);
 					line(imageSmooth,pt2,pt3,Scalar(255,0,0),2);
 					line(imageSmooth,pt3,pt4,Scalar(255,0,0),2);
 					line(imageSmooth,pt4,pt1,Scalar(255,0,0),2);
+
+					std::vector<Point2f> imagePoints(4);
+					imagePoints[0]=Point2f(pt1.x,pt1.y);
+					imagePoints[1]=Point2f(pt2.x,pt2.y);
+					imagePoints[2]=Point2f(pt3.x,pt3.y);
+					imagePoints[3]=Point2f(pt4.x,pt4.y);
+					std::vector<Point2f> figurePoints(4);
+					figurePoints[0]=Point2f(0.0,0.0);
+					figurePoints[1]=Point2f(0.0,512.0);
+					figurePoints[2]=Point2f(512.0,512.0);
+					figurePoints[3]=Point2f(512.0,0.0);
+					Mat homography = findHomography(figurePoints, imagePoints, 0);
+					Mat overlay;
+					warpPerspective(logo,overlay,homography,Size(imageSmooth.cols,imageSmooth.rows));
+					add(overlay,imageSmooth,imageSmooth);
 				}
 			}
 
