@@ -16,26 +16,34 @@ Mat improveImage(Mat image) {
 }
 
 // Extrai pontos vermelhos
-Mat extractRed(Mat image) {
-	Mat imageHsv;
-	cvtColor(image,imageHsv,CV_BGR2HSV);
+Mat extractRed(Mat imageHsv) {
 	Mat imageThr1;
 	Mat imageThr2;
-	inRange(imageHsv,Scalar(165,200,50),Scalar(180,255,255),imageThr1);
-	inRange(imageHsv,Scalar(0,200,50),Scalar(15,255,255),imageThr2);
+	inRange(imageHsv,Scalar(165,180,50),Scalar(180,255,255),imageThr1);
+	inRange(imageHsv,Scalar(0,180,50),Scalar(15,255,255),imageThr2);
 	bitwise_or(imageThr1,imageThr2,imageThr1);
-	morphologyEx(imageThr1,imageThr1,MORPH_CLOSE,Mat());
+	//morphologyEx(imageThr1,imageThr1,MORPH_CLOSE,Mat());
 	return imageThr1;
 }
 
 // Extrai pontos verdes
-Mat extractGreen(Mat image) {
-	Mat imageHsv;
-	cvtColor(image,imageHsv,CV_BGR2HSV);
+Mat extractGreen(Mat imageHsv) {
 	Mat imageThr;
 	inRange(imageHsv,Scalar(45,100,50),Scalar(75,255,255),imageThr);
-	morphologyEx(imageThr,imageThr,MORPH_CLOSE,Mat());
+	//morphologyEx(imageThr,imageThr,MORPH_CLOSE,Mat());
 	return imageThr;
+}
+
+// Extrai pontos azuis
+Mat extractBlue(Mat imageHsv) {
+	Mat imageThr;
+	inRange(imageHsv,Scalar(105,120,50),Scalar(135,255,255),imageThr);
+	//morphologyEx(imageThr,imageThr,MORPH_CLOSE,Mat());
+	return imageThr;
+}
+
+int distance(Point pt1,Point pt2) {
+	return (pt1.x-pt2.x)*(pt1.x-pt2.x)+(pt1.y-pt2.y)*(pt1.y-pt2.y);
 }
 
 int main(int argc, char* argv[]) 
@@ -66,36 +74,63 @@ int main(int argc, char* argv[])
 	while (true) {
 		if (cap.read(frame)) {
 			// Melhora a imagem
-			Mat imageSmooth = improveImage(frame);
+			Mat imageSmooth = improveImage(frame);	
+			Mat imageHsv;
+			cvtColor(imageSmooth,imageHsv,CV_BGR2HSV);
 
 			// Extrai pontos verdes e vermelhos
-			Mat redImage = extractRed(imageSmooth);
-			Mat greenImage = extractGreen(imageSmooth);
+			Mat redImage = extractRed(imageHsv);
+			Mat greenImage = extractGreen(imageHsv);
+			Mat blueImage = extractBlue(imageHsv);
 			vector<KeyPoint> redKeypoints;
 			vector<KeyPoint> greenKeypoints;
+			vector<KeyPoint> blueKeypoints;
 			pointDetector.detect(redImage,redKeypoints);
 			pointDetector.detect(greenImage,greenKeypoints);
+			pointDetector.detect(blueImage,blueKeypoints);
 
-			// Desenha Pontos
-			for (int i=0;i<redKeypoints.size();++i) {
-				circle(imageSmooth,redKeypoints[i].pt,10,Scalar(0,0,255),5);
-			}
-			for (int i=0;i<greenKeypoints.size();++i) {
-				circle(imageSmooth,greenKeypoints[i].pt,10,Scalar(0,255,0),5);
-			}
 			// Desenha linhas
 			for (int i=0;i<redKeypoints.size();++i) {
+				circle(imageSmooth,redKeypoints[i].pt,10,Scalar(0,0,255),2);
 				for (int j=0;j<greenKeypoints.size();++j) {
+					circle(imageSmooth,greenKeypoints[j].pt,10,Scalar(0,255,0),2);
 					Point pt1    = redKeypoints[i].pt;
-					Point pt2    = greenKeypoints[j].pt;
-					Point center = Point2i((pt1.x+pt2.x)/2,(pt1.y+pt2.y)/2);
-					line(imageSmooth,pt1,pt2,Scalar(255,0,0),2);
-					circle(imageSmooth,center,10,Scalar(255,0,0),2);
-					int vectX=pt2.x-pt1.x;
-					int vectY=pt2.y-pt1.y;
+					Point pt2;
+					Point pt3    = greenKeypoints[j].pt;
+					Point pt4;
+					Point center = Point2i((pt1.x+pt3.x)/2,(pt1.y+pt3.y)/2);
+					//circle(imageSmooth,center,10,Scalar(255,0,0),2);
+					int vectX=pt3.x-pt1.x;
+					int vectY=pt3.y-pt1.y;
 					int normX=vectY/2;
 					int normY=-vectX/2;
-					line(imageSmooth,Point2i(center.x+normX,center.y+normY),Point2i(center.x-normX,center.y-normY),Scalar(255,0,0),2);
+					pt2 = Point2i(center.x+normX,center.y+normY);
+					pt4 = Point2i(center.x-normX,center.y-normY);
+
+					unsigned int distPt2 = -1;int bestPt2=-1;
+					unsigned int distPt4 = -1;int bestPt4=-1;
+
+					for (int k=0;k<blueKeypoints.size();++k) {
+						circle(imageSmooth,blueKeypoints[k].pt,10,Scalar(255,0,0),2);
+						int newDistPt2 = distance(pt2,blueKeypoints[k].pt);
+						int newDistPt4 = distance(pt4,blueKeypoints[k].pt);
+						if (newDistPt2<distPt2) {
+							bestPt2 = k;
+							distPt2 = newDistPt2;
+						}
+						if (newDistPt4<distPt4) {
+							bestPt4 = k;
+							distPt4 = newDistPt4;
+						}
+					}
+
+					if (bestPt2>=0) {pt2 = blueKeypoints[bestPt2].pt;}
+					if (bestPt4>=0) {pt4 = blueKeypoints[bestPt4].pt;}
+
+					line(imageSmooth,pt1,pt2,Scalar(255,0,0),2);
+					line(imageSmooth,pt2,pt3,Scalar(255,0,0),2);
+					line(imageSmooth,pt3,pt4,Scalar(255,0,0),2);
+					line(imageSmooth,pt4,pt1,Scalar(255,0,0),2);
 				}
 			}
 
