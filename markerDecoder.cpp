@@ -103,26 +103,25 @@ int main(int argc, char* argv[])
 			for (int i=0;i<redKeypoints.size();++i) {
 				KeyPoint redKP = redKeypoints[i]; 
 				pt1 = redKP.pt;
-				circle(imageSmooth,redKeypoints[i].pt,10,Scalar(0,0,255),2);
+				//circle(imageSmooth,redKeypoints[i].pt,10,Scalar(0,0,255),2);
 				for (int j=0;j<greenKeypoints.size();++j) {
 					KeyPoint greenKP = greenKeypoints[j]; 
 					pt3 = greenKP.pt;
-					circle(imageSmooth,pt3,10,Scalar(0,255,0),2);
+					//circle(imageSmooth,pt3,10,Scalar(0,255,0),2);
 					Point center = Point2i((pt1.x+pt3.x)/2,(pt1.y+pt3.y)/2);
-					//circle(imageSmooth,center,10,Scalar(255,0,0),2);
 					int vectX=pt3.x-pt1.x;
 					int vectY=pt3.y-pt1.y;
 					int normX=vectY/2;
 					int normY=-vectX/2;
-					pt2 = Point2i(center.x+normX,center.y+normY);
-					pt4 = Point2i(center.x-normX,center.y-normY);
+					pt2 = Point2i(center.x-normX,center.y-normY);
+					pt4 = Point2i(center.x+normX,center.y+normY);
 
 					unsigned int distPt2 = -1;int bestPt2=-1;
 					unsigned int distPt4 = -1;int bestPt4=-1;
 
 					for (int k=0;k<blueKeypoints.size();++k) {
 						KeyPoint blueKP = blueKeypoints[k]; 
-						circle(imageSmooth,blueKP.pt,10,Scalar(255,0,0),2);
+						//circle(imageSmooth,blueKP.pt,10,Scalar(255,0,0),2);
 						int newDistPt2 = distance(pt2,blueKP.pt);
 						int newDistPt4 = distance(pt4,blueKP.pt);
 						if (newDistPt2<distPt2 && newDistPt2<MAX_DIST) {
@@ -145,10 +144,10 @@ int main(int argc, char* argv[])
 					}
 
 					if (bestPt2!=-1 && bestPt4!=-1) {
-						line(imageSmooth,pt1,pt2,Scalar(255,0,0),2);
+						/*line(imageSmooth,pt1,pt2,Scalar(255,0,0),2);
 						line(imageSmooth,pt2,pt3,Scalar(255,0,0),2);
 						line(imageSmooth,pt3,pt4,Scalar(255,0,0),2);
-						line(imageSmooth,pt4,pt1,Scalar(255,0,0),2);
+						line(imageSmooth,pt4,pt1,Scalar(255,0,0),2);*/
 
 						std::vector<Point2f> imagePoints(4);
 						imagePoints[0]=Point2f(pt1.x,pt1.y);
@@ -166,6 +165,32 @@ int main(int argc, char* argv[])
 						warpPerspective(logo,overlay,homography,Size(imageSmooth.cols,imageSmooth.rows));
 						warpPerspective(imageSmooth,marker,invHomography,Size(512,512));
 						add(overlay,imageSmooth,imageSmooth);
+						bool bits[21];
+						int counter = 0;
+						for (int y=0;y<5;++y) {
+							for (int x=0;x<5;++x) {
+								if ((y==0 && (x==0 || x==4)) ||
+									(y==4 && (x==0 || x==4))) {
+									continue;
+								}
+									else {
+									Vec3b val = marker.at<Vec3b>(511*y/4,511*x/4);
+									if (val[0]<64 && val[1]<64 && val[2]<64) {
+										bits[counter] = 1;
+										circle(marker,Point(511*x/4,511*y/4),3,Scalar(255,0,0),2);
+									}
+									else {
+										bits[counter] = 0;
+										circle(marker,Point(511*x/4,511*y/4),3,Scalar(0,255,0),2);
+									}
+									counter++;
+								}
+							}
+						}
+						for (int k=0;k<21;++k) {
+							cout << (bits[k]?1:0);
+						}
+						cout << endl;
 						imshow("Marker", marker);
 
 					}
