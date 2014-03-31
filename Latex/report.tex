@@ -15,10 +15,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %----------------------------------------------------------------------------------------
-%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%   PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %----------------------------------------------------------------------------------------
 
-\documentclass[DIV=calc, paper=a4, fontsize=11pt, twocolumn]{scrartcl}	 % A4 paper and 11pt font size
+\documentclass[DIV=calc, paper=a4, fontsize=11pt, twocolumn]{scrartcl}   % A4 paper and 11pt font size
 
 \usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
 \usepackage[english]{babel} % English language/hyphenation
@@ -27,7 +27,7 @@
 \usepackage[svgnames]{xcolor} % Enabling colors by their 'svgnames'
 \usepackage[hang, small,labelfont=bf,up,textfont=it,up]{caption} % Custom captions under/above floats in tables or figures
 \usepackage{booktabs} % Horizontal rules in tables
-\usepackage{fix-cm}	 % Custom font sizes - used for the initial letter in the document
+\usepackage{fix-cm}  % Custom font sizes - used for the initial letter in the document
 
 \usepackage{sectsty} % Enables custom section titles
 \allsectionsfont{\usefont{OT1}{phv}{b}{n}} % Change the font of all section commands
@@ -37,6 +37,7 @@
 \usepackage{lastpage} % Used to determine the number of pages in the document (for "Page X of Total")
 \usepackage{paralist}
 \usepackage{graphicx}
+\usepackage{algorithm2e}
 % Headers - all currently empty
 \lhead{}
 \chead{}
@@ -57,7 +58,7 @@
 {\textsf{#1}}}{}}
 
 %----------------------------------------------------------------------------------------
-%	TITLE SECTION
+%   TITLE SECTION
 %----------------------------------------------------------------------------------------
 
 \usepackage{titling} % Allows custom title configuration
@@ -90,7 +91,7 @@ Faculty of Engineering of the University of Porto % Your institution
 \thispagestyle{fancy} % Enabling the custom headers/footers for the first page 
 
 %----------------------------------------------------------------------------------------
-%	ABSTRACT
+%   ABSTRACT
 %----------------------------------------------------------------------------------------
 
 % The first character should be within \initial{}
@@ -98,7 +99,7 @@ Faculty of Engineering of the University of Porto % Your institution
 In this work we present an hybrid marker, that allows for both information storage and Augmented Reality applications.}
 
 %----------------------------------------------------------------------------------------
-%	ARTICLE CONTENTS
+%   ARTICLE CONTENTS
 %----------------------------------------------------------------------------------------
 
 \section*{Introduction}
@@ -198,23 +199,35 @@ The decoder works in two phases: A detection phase and a tracking phase.\\
 The detection phase is the most intensive, and therefore the decoder starts by downsampling the image by a factor of 4. It then converts it to HSV and extracts the red and green blobs via a simple inRange filter and a closing operation.\\
 
 
-After that, the red and green blobs are extracted using a flood fill algorithm, and their centroids are roughly estimated based on their top-left corner and their area (Note: using a different blob detection algorithm, it might be possible to extract the correct centroids and have a faster running time, although there's no fast blob detector in OpenCV).\\
+After that, the red and green blobs are extracted using a flood fill algorithm, and their centroids are roughly estimated based on their top-left corner and their area\footnote{Using a different blob detection algorithm, it might be possible to extract the correct centroids and have a faster running time, although there's no fast blob detector in OpenCV}.
 
 
-Next, we calculate the correct points in the following way:
-for each red blob r in R
-for each green blob g in G
-create a line l between r and g, with center c
-trace a line n perpendicular to l that goes through c
-create two point estimates, g’1 and g’2, which are the points of n with d(c,g’1) = d(c,g’2) = d(r,c), with g1!=g’2
-pick the two points, g1,g2 in G which are closest to g’1 and g’2 (respectively).
-if d(g1,g’1) and d(g2,g’2) are small enough, then a marker was found with colored corners centered in [r,g1,g,g2].\\
+Next, we calculate the correct points according to algorithm~\ref{alg:detect}. Figure~\ref{fig:detect} shows a visual
+interpretation of this method.
+
+\begin{algorithm}
+    \KwData{A set of red keypoints $R$ and a set of green keypoints $G$}
+    \KwResult{The coordinates of the center of the colored corners of a marker}
+    \ForAll{$r \in R$}{
+        \ForAll{$g \in G$}{
+            Trace a line $l=\overline{rg}$ with center $c$\;
+            Trace a line $n\perp l$ that goes through c\;
+            Create two points $g'1$ and $g'2$ in $n$ with $\|c,g'1\| = \|c,g'2\| = \|r,c\|$ and $g'1 \neq g'2$\;
+            Pick two points, $g1,g2 \in G$ which are closest to $g'1$ and $g'2$ respectively\;
+            \If{$\|g1,g'1\|$ and $\|g2,g'2\|$ are small enough}{
+                \Return{$[r,g1,g,g2]$\;}
+            }
+        }
+    }
+\caption{Detection algorithm}
+\label{alg:detect}
+\end{algorithm}
 
 \begin{figure}[!h]
     \centering
     \includegraphics[width=0.9\columnwidth]{marker.png}
-    \caption{Data representation format}
-    \label{fig:marker3}
+    \caption{Visualization of the detection algorithm}
+    \label{fig:detect}
 \end{figure}
 
 We continue with the homography between the marker and the image is calculated (taking into account that the detected points are the corner centers and not the marker's corners).
@@ -243,15 +256,20 @@ The tests were performed with a Galaxy Nexus ( Dual-core 1Ghz, 1Gb RAM) which is
 Here, we'll explore some of the approaches we took and ultimately left and its reasons:
 
 \begin{description}
+
+\item[3 colored corners]
+Our first marker design used 3 colors: one red corner on the top-left, one green corner on the bottom-right and two blue corners.\\
+Unfortunately, low quality printers and some lighting conditions make blue points hard to detect, therefore this idea was discarded.
+
 \item[Smaller tracker cells]
 Initially, the tracking cells were only 1 cell wide and the matrix size was only 5x5 which gave us a 25 which gave us a 25-4 = 21 bits for the identifier and the redundancy.
 We're having problems tracking the marker at longer distances and final solution provided better results with only 1 bit lost for the identifier.
 
-\item[Ndk performance]
+\item[NDK performance]
 At first, we developed our algorithm in C++ using the laptop camera and later ported it for android. This resulted in poor performance. Migrating the code for the Java API which performed better and simplified the code and building process.
 
 \item[Parallel multithreaded processing]
-When trying to optimize the framerate and the algorithm, we've explored the possibility of parallel multi threading. This, theoretically, would enable us optimize the camera framerate by sending each camera frame caught to a thread pool of the size of the number of processors on the device as seen in figure~\ref{fig:threading} mitigating the framerate slowdown by a delay in the output image. 
+When trying to optimize the framerate and the algorithm, we've explored the possibility of parallel multithreading. This, theoretically, would enable us to optimize the camera framerate by sending each camera frame caught to a thread pool of the size of the number of processors on the device as seen in figure~\ref{fig:threading} mitigating the framerate slowdown by a delay in the output image. 
 
 \begin{figure}[!h]
     \centering
