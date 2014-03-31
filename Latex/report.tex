@@ -192,17 +192,16 @@ We pass it an unique number which will be stored within the fiducial mark and we
 
 \subsection*{Marker Decoder}
 The decoder was written in Java with OpenCV.
+It works in two phases: A detection phase and a tracking phase.\\
 
-The decoder works in two phases: A detection phase and a tracking phase.\\
 
-
-The detection phase is the most intensive, and therefore the decoder starts by downsampling the image by a factor of 4. It then converts it to HSV and extracts the red and green blobs via a simple inRange filter and a closing operation.\\
+The detection phase is the most intensive, and therefore the decoder starts by downsampling the image by a factor of 4. It then converts it to HSV and detects the red and green regions via a simple inRange filter and a closing operation.\\
 
 
 After that, the red and green blobs are extracted using a flood fill algorithm, and their centroids are roughly estimated based on their top-left corner and their area\footnote{Using a different blob detection algorithm, it might be possible to extract the correct centroids and have a faster running time, although there's no fast blob detector in OpenCV}.
 
 
-Next, we calculate the correct points according to algorithm~\ref{alg:detect}. Figure~\ref{fig:detect} shows a visual
+Next, we find the points that represent a marker according to algorithm~\ref{alg:detect}. Figure~\ref{fig:detect} shows a visual
 interpretation of this method.
 
 \begin{algorithm}
