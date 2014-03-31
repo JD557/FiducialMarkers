@@ -141,9 +141,9 @@ void create_image(std::string &filename, std::bitset<20> id){
 		   		}
 		   		break;
 		   }
-		   // print in reverse
-		   unsigned int x = (/*WIDTH-1-*/i%WIDTH)*CELL_WIDTH;
-		   unsigned int y = (/*HEIGHT-1-*/i/WIDTH)*CELL_HEIGHT;
+		   
+		   unsigned int x = (i%WIDTH)*CELL_WIDTH;
+		   unsigned int y = (i/WIDTH)*CELL_HEIGHT;
 		   image.set_region(x,y,CELL_WIDTH,CELL_HEIGHT,color[0],color[1],color[2]);
 
 	   }
@@ -159,6 +159,7 @@ int main(int argc, char **argv)
 
 	unsigned int id_decimal = atoi(argv[1]);
 
+	// 20 bits total -> 15 bits for id encoding ; 5 bits for redundancy
 	// |__redundancy__|_______________________id________________________|
 	// [P5,P4,P3,P2,P1,B14,B13,B12,B11,B10,B9,B8,B7,B6,B5,B4,B3,B2,B1,B0]
 	std::bitset<20> id = add_redundancy(dec2bin(id_decimal));
@@ -169,6 +170,6 @@ int main(int argc, char **argv)
 	//create representation
 	create_image(output_file,id);
 
-	std::cout << argv[1] << ":" << id << " output:"<< output_file;
+	std::cout << "id:" << argv[1] << " encoded:" << id << " output:"<< output_file;
 	return 0;
 }
